@@ -45,5 +45,3 @@ Displays:
 - Last.fm API
 - LRCLib API
 - JSON-based local cache system
-
-## Project Structure
