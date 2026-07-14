@@ -1,0 +1,5 @@
+player.play(artist, title)
+player.pause()
+player.resume()
+player.stop()
+player.get_position()
