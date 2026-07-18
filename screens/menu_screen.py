@@ -29,14 +29,51 @@ class MainWindow(QWidget):
             700
         )
 
+        self.setStyleSheet("""
+            QWidget {
+                font-family: Tahoma;
+                font-size: 14px;
+            }
 
+            QLabel {
+                color: black;
+                background: #c0c0c0;
+                border: 3px inset #808080;
+                padding: 8px;
+            }
+
+            QPushButton {
+                background-color: #c0c0c0;
+                color: black;
+                border: 3px outset white;
+                padding: 8px;
+                font-family: Tahoma;
+                font-size: 14px;
+            }
+
+            QPushButton:hover {
+                background-color: #dcdcdc;
+            }
+
+            QPushButton:pressed {
+                border: 3px inset #808080;
+            }
+
+            QStackedWidget {
+                background-color: #008080;
+            }
+        """)
 
         layout = QVBoxLayout()
 
-
+        layout.setContentsMargins(
+            0,
+            0,
+            0,
+            0
+        )
 
         self.stack = QStackedWidget()
-
 
         layout.addWidget(
             self.stack
@@ -73,15 +110,17 @@ class MainWindow(QWidget):
             "TAK TO LECIAŁO"
         )
 
-
-        title.setStyleSheet(
-            """
-            font-size:48px;
-            font-weight:bold;
-            """
-        )
-
-
+        title.setStyleSheet("""
+            QLabel {
+                font-family: Tahoma;
+                font-size:48px;
+                font-weight:bold;
+                color:white;
+                background:#000080;
+                border:3px outset white;
+                padding:10px;
+            }
+        """)
 
         start = QPushButton(
             "NOWA GRA"

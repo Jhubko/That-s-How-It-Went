@@ -4,12 +4,12 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QHBoxLayout,
     QLineEdit,
-    QSizePolicy
+    QFrame
 )
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QFontMetrics
-
+from PySide6.QtWidgets import QProgressBar
 from utils.text_utils import normalize_word
 
 
@@ -20,7 +20,7 @@ class PlayerScreen(QWidget):
         super().__init__()
 
         self.setWindowTitle(
-            "Tak To Leciało - Gracze"
+            "TAK TO LECIAŁO - PLAYER.EXE"
         )
 
         self.resize(
@@ -28,53 +28,68 @@ class PlayerScreen(QWidget):
             700
         )
 
-        layout = QVBoxLayout()
+        self.setStyleSheet("""
+            QWidget {
+                background-color: #008080;
+            }
+        """)
 
+        main_layout = QVBoxLayout()
 
-        # =========================
-        # HEADER
-        # =========================
+        self.panel = QFrame()
 
-        self.header_layout = QHBoxLayout()
+        self.panel.setStyleSheet("""
+            QFrame {
+                background-color: #c0c0c0;
+                border: 3px solid;
+                border-top-color: white;
+                border-left-color: white;
+                border-right-color: #404040;
+                border-bottom-color: #404040;
+            }
+        """)
+
+        main_layout.addWidget(
+            self.panel
+        )
+
+        layout = QVBoxLayout(
+            self.panel
+        )
+
+        self.blink_state = False
+
+        self.blink_timer = QTimer()
+
+        self.blink_timer.timeout.connect(
+            self.blink_text
+        )
 
 
         self.header = QLabel(
-            "TAK TO LECIAŁO"
+            "TAK TO LECIAŁO!"
         )
-
-        self.header.setStyleSheet("""
-            font-size:48px;
-            font-weight:bold;
-        """)
 
         self.header.setAlignment(
             Qt.AlignCenter
         )
 
-        self.header.setSizePolicy(
-            QSizePolicy.Expanding,
-            QSizePolicy.Preferred
-        )
+        self.header.setStyleSheet("""
+            QLabel {
+                font-family: Tahoma;
+                font-size:32px;
+                font-weight:bold;
+                color:white;
+                background:#000080;
+                padding:8px;
+                border:3px outset white;
+            }
+        """)
 
-
-        self.header_layout.addWidget(
+        layout.addWidget(
             self.header
         )
 
-        self.header_layout.setAlignment(
-            Qt.AlignCenter
-        )
-
-
-        layout.addLayout(
-            self.header_layout
-        )
-
-
-
-        # =========================
-        # TEKST AKTUALNY
-        # =========================
 
         self.current_label = QLabel()
 
@@ -87,19 +102,21 @@ class PlayerScreen(QWidget):
         )
 
         self.current_label.setStyleSheet("""
-            font-size:36px;
+            QLabel {
+                font-family: Verdana;
+                font-size:36px;
+                font-weight:bold;
+                color:black;
+                background:white;
+                border:4px solid gray;
+                padding:20px;
+            }
         """)
-
 
         layout.addWidget(
             self.current_label
         )
 
-
-
-        # =========================
-        # TEKST NASTĘPNY
-        # =========================
 
         self.next_label = QLabel()
 
@@ -112,20 +129,20 @@ class PlayerScreen(QWidget):
         )
 
         self.next_label.setStyleSheet("""
-            font-size:36px;
-            color:lightgray;
+            QLabel {
+                font-family: Verdana;
+                font-size:28px;
+                color:#555555;
+                background:#EEEEEE;
+                border:3px inset gray;
+                padding:10px;
+            }
         """)
-
 
         layout.addWidget(
             self.next_label
         )
 
-
-
-        # =========================
-        # ODPOWIEDZI
-        # =========================
 
         self.guess_layout = QHBoxLayout()
 
@@ -140,18 +157,74 @@ class PlayerScreen(QWidget):
 
         self.guess_boxes = []
 
+        self.loading_label = QLabel(
+            "ŁADOWANIE..."
+        )
+
+        self.loading_label.setAlignment(
+            Qt.AlignCenter
+        )
+
+        self.loading_label.setStyleSheet("""
+            QLabel {
+                font-family: Tahoma;
+                font-size:24px;
+                font-weight:bold;
+                background:#c0c0c0;
+                border:3px inset gray;
+                padding:10px;
+            }
+        """)
+
+        self.loading_bar = QProgressBar()
+
+        self.loading_bar.setRange(
+            0,
+            100
+        )
+
+        self.loading_bar.setValue(
+            0
+        )
+
+        self.loading_bar.setTextVisible(
+            False
+        )
+
+        self.loading_bar.setFixedHeight(
+            30
+        )
+
+        self.loading_bar.setStyleSheet("""
+            QProgressBar {
+                background:#808080;
+                border:3px inset white;
+            }
+
+            QProgressBar::chunk {
+                background:#000080;
+            }
+        """)
+
+        self.loading_label.hide()
+        self.loading_bar.hide()
+
+        layout.addWidget(
+            self.loading_label
+        )
+
+        layout.addWidget(
+            self.loading_bar
+        )
 
         self.setLayout(
-            layout
+            main_layout
         )
 
 
-
-    # =========================
-    # EKRANY
-    # =========================
-
     def show_categories(self, categories):
+
+        self.stop_blink()
 
         self.header.setText(
             "WYBIERZ KATEGORIĘ"
@@ -172,6 +245,8 @@ class PlayerScreen(QWidget):
 
     def show_songs(self, songs):
 
+        self.stop_blink()
+
         self.header.setText(
             "WYBIERZ PIOSENKĘ"
         )
@@ -185,7 +260,6 @@ class PlayerScreen(QWidget):
                 f"{song['artist']} - {song['name']}\n\n"
             )
 
-
         self.current_label.setText(
             text
         )
@@ -197,6 +271,8 @@ class PlayerScreen(QWidget):
 
 
     def show_song(self, song):
+
+        self.stop_blink()
 
         self.header.setText(
             "PRZYGOTUJ SIĘ!"
@@ -221,7 +297,11 @@ class PlayerScreen(QWidget):
     ):
 
         self.header.setText(
-            "ŚPIEWAJ!"
+            "★ ŚPIEWAJ! ★"
+        )
+
+        self.blink_timer.start(
+            500
         )
 
         self.current_label.setText(
@@ -232,7 +312,6 @@ class PlayerScreen(QWidget):
             next_line
         )
 
-
         self.clear_guess_fields()
 
 
@@ -241,6 +320,8 @@ class PlayerScreen(QWidget):
             self,
             text
     ):
+
+        self.stop_blink()
 
         self.next_label.clear()
 
@@ -255,54 +336,41 @@ class PlayerScreen(QWidget):
                 Qt.AlignCenter
             )
 
-
             clean_word = normalize_word(
                 word
             )
-
 
             edit.setPlaceholderText(
                 "_" * len(clean_word)
             )
 
-
             metrics = QFontMetrics(
                 edit.font()
             )
 
-
             width = (
-                metrics.horizontalAdvance(
-                    clean_word
-                )
-                + 60
+                metrics.horizontalAdvance(clean_word)
+                + 50
             )
 
-
             edit.setFixedWidth(
-                max(
-                    width,
-                    120
-                )
+                max(width,120)
             )
 
             edit.setFixedHeight(
                 60
             )
 
-
             edit.setStyleSheet("""
-                QLineEdit{
-                    font-size:30px;
+                QLineEdit {
+                    font-family: Courier New;
+                    font-size:28px;
                     font-weight:bold;
-                    border:2px solid white;
-                    border-radius:8px;
-                    padding:6px;
-                    background:#202020;
-                    color:white;
+                    border:3px outset white;
+                    background:#FFFFCC;
+                    color:black;
                 }
             """)
-
 
             self.guess_layout.addWidget(
                 edit
@@ -324,7 +392,6 @@ class PlayerScreen(QWidget):
 
                 item.widget().deleteLater()
 
-
         self.guess_boxes.clear()
 
 
@@ -345,7 +412,6 @@ class PlayerScreen(QWidget):
 
         guesses = self.get_guess()
 
-
         for i, box in enumerate(self.guess_boxes):
 
             if i >= len(correct_words):
@@ -358,32 +424,25 @@ class PlayerScreen(QWidget):
                 correct_words[i]
             ):
 
-
                 box.setStyleSheet("""
-                    QLineEdit{
-                        background:#2E7D32;
+                    QLineEdit {
+                        background:#00AA00;
                         color:white;
                         font-size:30px;
                         font-weight:bold;
-                        border:2px solid white;
-                        border-radius:8px;
                     }
                 """)
-
 
             else:
 
                 box.setStyleSheet("""
-                    QLineEdit{
-                        background:#C62828;
+                    QLineEdit {
+                        background:#AA0000;
                         color:white;
                         font-size:30px;
                         font-weight:bold;
-                        border:2px solid white;
-                        border-radius:8px;
                     }
                 """)
-
 
                 box.setText(
                     correct_words[i]
@@ -395,6 +454,8 @@ class PlayerScreen(QWidget):
             self,
             lyrics
     ):
+
+        self.stop_blink()
 
         self.header.setText(
             "POPRAWNY TEKST"
@@ -410,10 +471,38 @@ class PlayerScreen(QWidget):
 
 
 
+    def stop_blink(self):
+
+        self.blink_timer.stop()
+
+        self.blink_state = False
+
+
+
+    def blink_text(self):
+
+        self.blink_state = not self.blink_state
+
+        if self.blink_state:
+
+            self.header.setText(
+                "★ ŚPIEWAJ! ★"
+            )
+
+        else:
+
+            self.header.setText(
+                "TAK TO LECIAŁO"
+            )
+
+
+
     def clear(self):
 
+        self.stop_blink()
+
         self.header.setText(
-            "TAK TO LECIAŁO"
+            "TAK TO LECIAŁO!"
         )
 
         self.current_label.clear()
@@ -421,3 +510,35 @@ class PlayerScreen(QWidget):
         self.next_label.clear()
 
         self.clear_guess_fields()
+
+    def show_loading(self):
+
+        self.header.setText(
+            "TAK TO LECIAŁO - PLAYER.EXE"
+        )
+
+        self.current_label.setText(
+            "ŁADOWANIE PIOSENEK..."
+        )
+
+        self.next_label.setText(
+            "Proszę czekać..."
+        )
+
+        self.loading_label.show()
+        self.loading_bar.show()
+
+        self.loading_bar.setValue(
+            0
+        )
+
+    def update_loading(self, value):
+
+        self.loading_bar.setValue(
+            value
+        )
+
+    def hide_loading(self):
+
+        self.loading_label.hide()
+        self.loading_bar.hide()

@@ -8,7 +8,7 @@ from PySide6.QtWidgets import (
 )
 
 from PySide6.QtCore import QTimer
-
+from PySide6.QtCore import Qt
 from core.game_manager import game
 
 from api.lrclib import LRCLib
@@ -82,6 +82,22 @@ class HostScreen(QWidget):
         self.info = QLabel(
             "Panel prowadzącego"
         )
+
+        self.info.setAlignment(
+            Qt.AlignCenter
+        )
+
+        self.info.setStyleSheet("""
+            QLabel {
+                background:#000080;
+                color:white;
+                font-family:Tahoma;
+                font-size:18px;
+                font-weight:bold;
+                padding:10px;
+                border:3px outset white;
+            }
+        """)
 
         self.buttons_layout = QVBoxLayout()
 
@@ -315,6 +331,7 @@ class HostScreen(QWidget):
 
     def start_round(self):
 
+        self.main.player_screen.show_loading()
         self.clear_buttons()
         self.continue_button.hide()
         self.stop_used = False
@@ -337,6 +354,7 @@ class HostScreen(QWidget):
             lyrics
         )
 
+        self.main.player_screen.hide_loading()
         game.selected_line = None
         game.selected_line_index = None
 
