@@ -118,6 +118,33 @@ class SpotifyClient:
 
         return result
 
+    def search_tracks(
+            self,
+            query,
+            limit=10
+    ):
+
+        results = self.spotify.search(
+            q=query,
+            type="track",
+            limit=limit
+        )
+
+        songs = []
+
+        for track in results["tracks"]["items"]:
+            songs.append({
+
+                "artist": track["artists"][0]["name"],
+                "name": track["name"],
+                "uri": track["uri"],
+                "id": track["id"],
+                "url": track["external_urls"]["spotify"]
+
+            })
+
+        return songs
+
     def play(self, uri):
 
         devices = self.spotify.devices()

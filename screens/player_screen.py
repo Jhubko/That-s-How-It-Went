@@ -4,7 +4,8 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QHBoxLayout,
     QLineEdit,
-    QFrame
+    QFrame,
+    QScrollArea
 )
 
 from PySide6.QtCore import Qt, QTimer
@@ -90,7 +91,6 @@ class PlayerScreen(QWidget):
             self.header
         )
 
-
         self.current_label = QLabel()
 
         self.current_label.setAlignment(
@@ -113,10 +113,38 @@ class PlayerScreen(QWidget):
             }
         """)
 
-        layout.addWidget(
+        self.scroll_area = QScrollArea()
+
+        self.scroll_area.setMinimumHeight(
+            200
+        )
+
+        self.scroll_area.setMaximumHeight(
+            350
+        )
+
+        self.scroll_area.setWidgetResizable(
+            True
+        )
+
+        self.scroll_area.setStyleSheet("""
+            QScrollArea {
+                background:white;
+                border:0px;
+            }
+
+            QScrollBar:vertical {
+                width:20px;
+            }
+        """)
+
+        self.scroll_area.setWidget(
             self.current_label
         )
 
+        layout.addWidget(
+            self.scroll_area
+        )
 
         self.next_label = QLabel()
 
@@ -241,8 +269,6 @@ class PlayerScreen(QWidget):
 
         self.clear_guess_fields()
 
-
-
     def show_songs(self, songs):
 
         self.stop_blink()
@@ -254,7 +280,6 @@ class PlayerScreen(QWidget):
         text = ""
 
         for index, song in enumerate(songs):
-
             text += (
                 f"{index + 1}. "
                 f"{song['artist']} - {song['name']}\n\n"

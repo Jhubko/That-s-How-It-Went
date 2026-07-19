@@ -4,13 +4,14 @@ from PySide6.QtWidgets import (
     QWidget,
     QLabel,
     QPushButton,
-    QVBoxLayout
+    QVBoxLayout,
+    QHBoxLayout,
+    QLineEdit
 )
 
 from PySide6.QtCore import QTimer
 from PySide6.QtCore import Qt
 from core.game_manager import game
-
 from api.lrclib import LRCLib
 from api.lastfm_client import LastFMClient
 from api.spotify_client import SpotifyClient
@@ -41,7 +42,6 @@ class HostScreen(QWidget):
         self.categories = [
 
             "polish music",
-            "polish music",
             "polish rock",
             "polish pop",
             "polish hip hop",
@@ -63,7 +63,6 @@ class HostScreen(QWidget):
             "dance",
             "disco",
             "party",
-            "eurodance",
 
             "metal",
             "heavy metal",
@@ -101,12 +100,83 @@ class HostScreen(QWidget):
 
         self.buttons_layout = QVBoxLayout()
 
+        self.search = QLineEdit()
+
+        self.search.setPlaceholderText(
+            "Wpisz tytuł lub wykonawcę..."
+        )
+
+        self.search.setFixedHeight(
+            40
+        )
+
+        self.search.setStyleSheet("""
+            QLineEdit {
+                background:#ffffff;
+                color:black;
+                font-family:Tahoma;
+                font-size:16px;
+                padding:8px;
+                border:3px inset #808080;
+            }
+
+            QLineEdit:focus {
+                border:3px inset #000080;
+                background:#ffffdd;
+            }
+        """)
+
+        layout.addWidget(
+            self.search
+        )
+
+        self.search_button = QPushButton(
+            "SZUKAJ"
+        )
+
+        self.search_button.setFixedHeight(
+            40
+        )
+
+        self.search_button.setStyleSheet("""
+            QPushButton {
+                background:#c0c0c0;
+                color:black;
+                font-family:Tahoma;
+                font-size:16px;
+                font-weight:bold;
+                border:3px outset white;
+                padding:5px;
+            }
+
+            QPushButton:hover {
+                background:#dcdcdc;
+            }
+
+            QPushButton:pressed {
+                border:3px inset white;
+                background:#a0a0a0;
+            }
+        """)
+
+        self.search_button.clicked.connect(
+            self.search_song
+        )
+
+        layout.addWidget(
+            self.search_button
+        )
+
+        self.search.returnPressed.connect(
+            self.search_song
+        )
+
         self.category_button = QPushButton(
             "POKAŻ KATEGORIE"
         )
 
         self.download_button = QPushButton(
-            "POBIERZ WIĘCEJ PIOSENEK"
+            "POBIERZ WIĘCEJ Z KATEGORII"
         )
 
         self.download_button.clicked.connect(
@@ -165,6 +235,47 @@ class HostScreen(QWidget):
             self.buttons_layout
         )
 
+        self.sync_label = QLabel(
+            "SYNC: 0 ms"
+        )
+
+        self.sync_label.setAlignment(
+            Qt.AlignCenter
+        )
+
+        self.minus_sync_button = QPushButton(
+            "-"
+        )
+
+        self.plus_sync_button = QPushButton(
+            "+"
+        )
+
+        self.minus_sync_button.clicked.connect(
+            self.decrease_sync
+        )
+
+        self.plus_sync_button.clicked.connect(
+            self.increase_sync
+        )
+
+        sync_layout = QHBoxLayout()
+
+        sync_layout.addWidget(
+            self.minus_sync_button
+        )
+
+        sync_layout.addWidget(
+            self.sync_label
+        )
+
+        sync_layout.addWidget(
+            self.plus_sync_button
+        )
+
+        layout.addLayout(
+            sync_layout
+        )
 
         layout.addWidget(
             self.action_button
@@ -196,6 +307,7 @@ class HostScreen(QWidget):
 
         self.reset_game()
         self.clear_buttons()
+        self.download_button.hide()
 
         selected_categories = random.sample(
             self.categories,
@@ -250,7 +362,7 @@ class HostScreen(QWidget):
         if not songs:
             tracks = self.lastfm.get_random_tracks(
                 category,
-                30
+                100
             )
 
             songs = self.spotify.convert_lastfm_tracks(
@@ -298,36 +410,46 @@ class HostScreen(QWidget):
         game.song = song
         game.song_used = False
 
+        game.full_lyrics = []
+        game.selected_line = None
+        game.selected_line_index = None
+        game.stop_time = 0
+        game.round_paused = False
+        game.music_playing = False
+
+        self.lyrics_offset = 0
+
+        self.continue_button.hide()
+
+        self.action_button.setText(
+            "START RUNDY"
+        )
+
         self.info.setText(
             f"Wybrano:\n"
             f"{song['artist']} - {song['name']}"
         )
 
-
-        self.main.player_screen.show_song(
-            song
-        )
+        self.main.player_screen.show_song(song)
 
     def action_clicked(self):
 
         if not game.song:
-
             self.info.setText(
                 "Najpierw wybierz piosenkę!"
             )
 
             return
 
-
         if game.music_playing:
-
             self.stop_round()
+            return
 
-        else:
+        if game.round_paused:
+            self.continue_song()
+            return
 
-            self.start_round()
-
-
+        self.start_round()
 
     def start_round(self):
 
@@ -335,6 +457,7 @@ class HostScreen(QWidget):
         self.clear_buttons()
         self.continue_button.hide()
         self.stop_used = False
+        self.lyrics_offset = 0
 
         lyrics = self.lyrics_api.get_lyrics(
             game.song["artist"],
@@ -371,14 +494,15 @@ class HostScreen(QWidget):
             game.song["uri"]
         )
 
-
         game.music_playing = True
-
+        game.round_paused = False
+        game.stop_used = False
 
         self.game_timer.start(
             200
         )
 
+        self.lyrics_offset = 0
 
         self.action_button.setText(
             "STOP"
@@ -402,10 +526,12 @@ class HostScreen(QWidget):
         if progress is None:
             return
 
-
-        if progress >= game.stop_time and not self.continue_button.isVisible() and not game.stop_used:
+        if progress >= game.stop_time and not game.stop_used:
             game.stop_used = True
-            self.stop_round()
+
+            self.stop_round(
+                guess=True
+            )
 
             return
 
@@ -416,45 +542,64 @@ class HostScreen(QWidget):
 
         for i, line in enumerate(game.full_lyrics):
 
-            if progress >= line["time"]:
+            adjusted_progress = progress - self.lyrics_offset
+
+            if adjusted_progress >= line["time"]:
+
+                if i == game.selected_line_index and not game.round_paused:
+                    continue
+
                 current = line["text"]
                 current_index = i
 
-        if current_index is not None and current_index + 1 < len(game.full_lyrics):
+        if current_index is not None:
 
             next_index = current_index + 1
 
-            next_line = game.full_lyrics[next_index]["text"]
+            if next_index < len(game.full_lyrics):
 
-            if next_index == game.selected_line_index:
-                next_line = hide_line(
-                    next_line
-                )
+                if next_index == game.selected_line_index and not game.round_paused:
+
+                    next_line = hide_line(
+                        game.full_lyrics[next_index]["text"]
+                    )
+
+                else:
+
+                    next_line = game.full_lyrics[next_index]["text"]
 
         self.main.player_screen.show_current_lyrics(
             current,
             next_line
         )
 
-    def stop_round(self):
+    def stop_round(self, guess=False):
 
         self.game_timer.stop()
-
         self.spotify.pause()
-
+        game.round_paused = True
         game.music_playing = False
 
         self.action_button.setText(
             "START RUNDY"
         )
 
+        stop_seconds = int(
+            game.stop_time / 1000
+        )
+
+        minutes = stop_seconds // 60
+        seconds = stop_seconds % 60
+
         if game.selected_line:
             self.info.setText(
-                f"Muzyka zatrzymana\n\n"
+                f"Muzyka zatrzymana\n"
+                f"ZGADYWANIE OD: {minutes}:{seconds:02d}\n\n"
                 f"Brakujący tekst:\n"
                 f"{game.selected_line['text']}"
             )
 
+        if guess:
             self.main.player_screen.show_guess_fields(
                 game.selected_line["text"]
             )
@@ -527,7 +672,7 @@ class HostScreen(QWidget):
 
         game.selected_line_index = index
 
-        game.stop_time = selected["time"] - 1000
+        game.stop_time = self.get_adjusted_stop_time()
 
         seconds = int(
             game.stop_time / 1000
@@ -549,16 +694,49 @@ class HostScreen(QWidget):
             "sek"
         )
 
+    def get_adjusted_stop_time(self):
+
+        stop = (
+                game.selected_line["time"]
+                - 2000
+        )
+
+        return max(
+            stop,
+            10000
+        )
+
     def continue_song(self):
 
-        self.spotify.resume()
+        if not game.selected_line:
+            self.info.setText(
+                "Brak aktywnej rundy"
+            )
+            self.continue_button.hide()
+            return
 
+        self.spotify.resume()
+        game.round_paused = False
         game.music_playing = True
 
         self.continue_button.hide()
 
+        self.action_button.setText(
+            "STOP"
+        )
+
+        stop_seconds = int(
+            game.stop_time / 1000
+        )
+
+        minutes = stop_seconds // 60
+        seconds = stop_seconds % 60
+
         self.info.setText(
-            "Piosenka kontynuowana"
+            f"Piosenka kontynuowana\n"
+            f"ZGADYWANIE OD: {minutes}:{seconds:02d}\n\n"
+            f"Brakujący tekst:\n"
+            f"{game.selected_line['text']}"
         )
 
         self.game_timer.start(
@@ -581,6 +759,7 @@ class HostScreen(QWidget):
         game.music_playing = False
         game.stop_used = False
         game.song_used = False
+        game.round_paused = False
 
         self.continue_button.hide()
         self.download_button.hide()
@@ -641,6 +820,74 @@ class HostScreen(QWidget):
 
         self.info.setText(
             f"Dodano {len(new_songs)} nowych piosenek"
+        )
+
+    def search_song(self):
+
+        self.download_button.hide()
+
+        query = self.search.text().strip()
+
+        if not query:
+            return
+
+        self.clear_buttons()
+
+        songs = self.spotify.search_tracks(
+            query
+        )
+
+        if not songs:
+            self.info.setText(
+                "Nic nie znaleziono"
+            )
+
+            return
+
+        game.category = None  # ważne
+
+        game.songs = songs
+
+        self.main.player_screen.show_songs(
+            songs
+        )
+
+        for song in songs:
+            button = QPushButton(
+                f"{song['artist']} - {song['name']}"
+            )
+
+            button.clicked.connect(
+                lambda checked=False, s=song:
+                self.choose_song(s)
+            )
+
+            self.buttons_layout.addWidget(
+                button
+            )
+
+        self.info.setText(
+            f"Znaleziono {len(songs)} utworów"
+        )
+
+    def decrease_sync(self):
+
+        self.lyrics_offset -= 100
+
+        self.update_sync_label()
+
+    def increase_sync(self):
+
+        self.lyrics_offset += 200
+
+        self.update_sync_label()
+
+    def update_sync_label(self):
+
+        seconds = self.lyrics_offset / 1000
+
+        self.sync_label.setText(
+            f"TEKST: {seconds:+.1f}s"
         )
 
 def hide_line(text):

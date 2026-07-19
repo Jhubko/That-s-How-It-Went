@@ -16,5 +16,6 @@ class GameManager:
         self.selected_line = None
         self.stop_used = False
         self.song_used = False
+        self.round_paused = False
 
 game = GameManager()
